@@ -1,0 +1,53 @@
+# Generic Docker build context excludes for both services.
+# Each service may also have its own .dockerignore (this one is at the repo root).
+
+# VCS / IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
+*.iml
+
+# Local virtual envs and caches
+env/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data / uploads (mounted as volumes at runtime)
+uploads/
+fastapi_service/uploads/
+fastapi_service/processed/
+data/
+**/.faiss
+**/*.index
+**/*.meta
+
+# Environments
+.env
+.env.*
+!.env.example
+
+# Build artefacts
+dist/
+build/
+*.log
+
+# Legacy prototype (do NOT ship into containers)
+app/
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# OS junk
+.DS_Store
+Thumbs.db

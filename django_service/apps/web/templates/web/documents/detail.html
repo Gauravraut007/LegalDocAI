@@ -1,0 +1,148 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}{{ doc.title|default:doc.original_filename }} · LDIP{% endblock %}
+
+{% block content %}
+<div class="container">
+  <a href="{% url 'web:documents' %}" class="text-decoration-none small">
+    <i class="bi bi-arrow-left"></i> All documents
+  </a>
+  <div class="d-flex justify-content-between align-items-start mt-2 mb-4 flex-wrap gap-2">
+    <div>
+      <h3 class="mb-1">{{ doc.title|default:doc.original_filename }}</h3>
+      <div class="text-muted small">
+        {{ doc.original_filename }} · {{ doc.size_bytes|filesize }} ·
+        <code>{{ doc.id }}</code>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      {% include "web/partials/status_badge.html" with status=doc.status %}
+      <form method="post" action="{% url 'web:document_delete' doc.id %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this document and all its data?');">
+          <i class="bi bi-trash me-1"></i>Delete
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white"><strong><i class="bi bi-info-circle me-1"></i>Metadata</strong></div>
+        <div class="card-body small">
+          <dl class="row mb-0">
+            <dt class="col-sm-4">Type</dt>
+            <dd class="col-sm-8"><span class="badge text-bg-light text-uppercase">{{ doc.doc_type }}</span></dd>
+            <dt class="col-sm-4">Pages</dt>
+            <dd class="col-sm-8">{{ doc.page_count|default:"—" }}</dd>
+            <dt class="col-sm-4">SHA-256</dt>
+            <dd class="col-sm-8 text-break"><code>{{ doc.sha256|default:"—" }}</code></dd>
+            <dt class="col-sm-4">Workspace</dt>
+            <dd class="col-sm-8"><a href="{% url 'web:workspace_detail' doc.workspace.id %}">{{ doc.workspace.name }}</a></dd>
+            <dt class="col-sm-4">Uploaded by</dt>
+            <dd class="col-sm-8">{{ doc.uploaded_by.email }}</dd>
+            <dt class="col-sm-4">Created</dt>
+            <dd class="col-sm-8">{{ doc.created_at|date:"Y-m-d H:i" }}</dd>
+            <dt class="col-sm-4">Updated</dt>
+            <dd class="col-sm-8">{{ doc.updated_at|date:"Y-m-d H:i" }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-activity me-1"></i>Pipeline progress</strong>
+          <span id="stage-tag" class="badge text-bg-secondary">—</span>
+        </div>
+        <div class="card-body">
+          <div class="progress" style="height: 1.25rem;">
+            <div id="progress-bar"
+                 class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                 role="progressbar" style="width: 0%;">0%</div>
+          </div>
+          <div id="progress-message" class="small text-muted mt-2">Connecting…</div>
+          <ul id="event-log" class="list-unstyled small mt-3 mb-0" style="max-height: 280px; overflow:auto;"></ul>
+        </div>
+      </div>
+
+      {% if doc.status == 'ready' %}
+      <a href="{% url 'web:chat_new' %}" class="btn btn-primary w-100 mt-3">
+        <i class="bi bi-chat-square-text me-1"></i>Chat with this document
+      </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const isTerminal = {{ is_terminal|yesno:"true,false" }};
+  const url = "{% url 'web:document_events' doc.id %}";
+  const bar = document.getElementById("progress-bar");
+  const msg = document.getElementById("progress-message");
+  const tag = document.getElementById("stage-tag");
+  const log = document.getElementById("event-log");
+
+  function setBar(pct, stage) {
+    pct = Math.max(0, Math.min(100, pct|0));
+    bar.style.width = pct + "%";
+    bar.textContent = pct + "%";
+    if (stage === "ready") {
+      bar.classList.remove("progress-bar-animated", "bg-info", "bg-warning");
+      bar.classList.add("bg-success");
+    } else if (stage === "failed") {
+      bar.classList.remove("progress-bar-animated", "bg-info", "bg-success");
+      bar.classList.add("bg-danger");
+    }
+  }
+
+  function appendLog(stage, message) {
+    const li = document.createElement("li");
+    li.innerHTML = `<i class="bi bi-arrow-right text-muted me-1"></i><strong>${stage}</strong> · ${message}`;
+    log.prepend(li);
+  }
+
+  // If already done, render the snapshot only.
+  if (isTerminal) {
+    setBar(100, "{{ doc.status }}");
+    msg.textContent = "Pipeline finished: {{ doc.status }}";
+    tag.textContent = "{{ doc.status }}";
+    return;
+  }
+
+  const es = new EventSource(url);
+
+  function handle(e) {
+    let data;
+    try { data = JSON.parse(e.data); } catch { data = {raw: e.data}; }
+    const stage = data.stage || e.type;
+    const pct = (data.progress_pct ?? 0);
+    const text = data.message || stage;
+    setBar(pct, stage);
+    msg.textContent = text;
+    tag.textContent = stage;
+    tag.className = "badge text-bg-" +
+      (stage === "ready" ? "success" :
+       stage === "failed" ? "danger" : "info");
+    appendLog(stage, text);
+    if (stage === "ready" || stage === "failed") {
+      es.close();
+      // Refresh in 1.5s so server-rendered metadata reflects final state.
+      setTimeout(() => location.reload(), 1500);
+    }
+  }
+  es.addEventListener("snapshot", handle);
+  es.addEventListener("progress", handle);
+  es.addEventListener("end", () => es.close());
+  es.addEventListener("error", () => {
+    msg.textContent = "Lost connection to event stream.";
+    es.close();
+  });
+})();
+</script>
+{% endblock %}

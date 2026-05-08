@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.log
+
+# Virtual environments
+env/
+.venv/
+venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Data / uploads / FAISS indexes
+uploads/
+fastapi_service/uploads/
+fastapi_service/processed/
+data/
+*.index
+*.meta
+
+# Django
+django_service/staticfiles/
+django_service/media/
+
+# Build artefacts
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Wheels
+wheels/
+*.whl

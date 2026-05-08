@@ -1,0 +1,56 @@
+# Top-level tooling config shared by both services (ruff / black / mypy).
+# Not used to build any package; only for linting/formatting/type-checking.
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    env
+  | \.venv
+  | venv
+  | app          # legacy prototype (ignored)
+  | django_service/.*/migrations
+  | fastapi_service/alembic/versions
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    "env",
+    ".venv",
+    "venv",
+    "app",                                  # legacy prototype
+    "django_service/**/migrations",
+    "fastapi_service/alembic/versions",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "C4", "SIM", "RUF"]
+ignore = ["E501", "B008", "N806"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+exclude = [
+    "env",
+    "venv",
+    "\\.venv",
+    "app/",
+    "django_service/.*/migrations/",
+    "fastapi_service/alembic/versions/",
+]
+
+[[tool.mypy.overrides]]
+module = ["faiss", "faiss.*", "sentence_transformers", "sentence_transformers.*"]
+ignore_missing_imports = true

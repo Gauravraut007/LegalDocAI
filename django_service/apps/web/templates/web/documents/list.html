@@ -1,0 +1,67 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}Documents · LDIP{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Documents</h3>
+      <div class="text-muted small">{{ active_workspace.name }}</div>
+    </div>
+    <a href="{% url 'web:document_upload' %}" class="btn btn-primary">
+      <i class="bi bi-cloud-upload me-1"></i>Upload
+    </a>
+  </div>
+
+  <form method="get" class="d-flex gap-2 mb-3" style="max-width: 400px;">
+    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+      {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>Status: {{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Size</th>
+            <th>Uploaded</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for d in documents %}
+          <tr>
+            <td>
+              <a href="{% url 'web:document_detail' d.id %}" class="text-decoration-none fw-semibold">
+                {{ d.title|default:d.original_filename|truncatechars:80 }}
+              </a>
+              <div class="small text-muted">{{ d.original_filename|truncatechars:80 }}</div>
+            </td>
+            <td><span class="badge text-bg-light text-uppercase">{{ d.doc_type }}</span></td>
+            <td>{% include "web/partials/status_badge.html" with status=d.status %}</td>
+            <td class="small">{{ d.size_bytes|filesize }}</td>
+            <td class="small text-muted">{{ d.created_at|date:"Y-m-d H:i" }}</td>
+            <td class="text-end">
+              <a href="{% url 'web:document_detail' d.id %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="text-center text-muted py-5">
+            <i class="bi bi-inbox" style="font-size:2rem;"></i>
+            <div>No documents yet — <a href="{% url 'web:document_upload' %}">upload one</a>.</div>
+          </td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

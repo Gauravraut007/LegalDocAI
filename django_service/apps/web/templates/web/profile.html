@@ -1,0 +1,49 @@
+{% extends "web/base.html" %}
+{% block title %}Profile · LDIP{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 720px;">
+  <h3 class="mb-4"><i class="bi bi-person me-2"></i>Profile</h3>
+  <div class="row g-4">
+    <div class="col-md-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" value="{{ user.email }}" disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Full name</label>
+              {{ form.full_name }}
+              {{ form.full_name.errors }}
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Avatar URL</label>
+              {{ form.avatar }}
+              {{ form.avatar.errors }}
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <a href="{% url 'web:password_change' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-key me-1"></i>Change password
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4 small">
+          <div class="text-muted mb-2">Account info</div>
+          <div><strong>User ID:</strong> <code>{{ user.id }}</code></div>
+          <div><strong>Joined:</strong> {{ user.date_joined|date:"Y-m-d H:i" }}</div>
+          <div><strong>Last login IP:</strong> {{ user.last_login_ip|default:"—" }}</div>
+          <div><strong>Staff:</strong> {{ user.is_staff|yesno:"Yes,No" }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+# Production overrides. Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    restart: always
+    ports: []  # do not publish to host in prod
+
+  redis:
+    restart: always
+    ports: []
+
+  fastapi:
+    image: ldip/fastapi:prod
+    restart: always
+    environment:
+      ENVIRONMENT: production
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 4 --proxy-headers --no-server-header
+
+  celery_worker:
+    image: ldip/fastapi:prod
+    restart: always
+    environment:
+      ENVIRONMENT: production
+    command: celery -A app.workers.tasks worker -l info -Q ocr,embed,default --concurrency=4
+
+  celery_beat:
+    image: ldip/fastapi:prod
+    restart: always
+    environment:
+      ENVIRONMENT: production
+
+  django:
+    image: ldip/django:prod
+    restart: always
+    environment:
+      DJANGO_DEBUG: "False"
+      DJANGO_SETTINGS_MODULE: core.settings.production
+    command: daphne -b 0.0.0.0 -p 8000 core.asgi:application

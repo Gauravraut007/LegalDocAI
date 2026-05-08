@@ -1,0 +1,223 @@
+{% extends "web/base.html" %}
+{% load web_extras %}
+{% block title %}{{ session.title|default:"Chat" }} · LDIP{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="row g-3">
+    <!-- Sidebar: documents in this session -->
+    <div class="col-lg-3">
+      <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
+        <div class="card-header bg-white"><strong><i class="bi bi-file-earmark me-1"></i>Documents</strong></div>
+        <ul class="list-group list-group-flush small">
+          {% for d in documents %}
+            {% if d %}
+            <li class="list-group-item">
+              <a href="{% url 'web:document_detail' d.id %}" class="text-decoration-none">
+                {{ d.title|default:d.original_filename|truncatechars:50 }}
+              </a>
+              <div class="text-muted">{{ d.doc_type }}</div>
+            </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Conversation -->
+    <div class="col-lg-9">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ session.title|default:"(untitled)" }}</strong>
+            <div class="small text-muted">Session <code>{{ session.id }}</code></div>
+          </div>
+          <a href="{% url 'web:chat_sessions' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>All sessions
+          </a>
+        </div>
+
+        <div id="messages" class="card-body" style="min-height: 50vh; max-height: 65vh; overflow-y: auto;">
+          {% for m in messages %}
+            <div class="msg msg-{{ m.role }}">
+              <div class="msg-role"><i class="bi bi-{% if m.role == 'user' %}person{% else %}robot{% endif %}"></i> {{ m.role }}</div>
+              <div class="msg-body">{{ m.content|linebreaksbr }}</div>
+              {% if m.sources %}
+                <details class="msg-sources mt-2">
+                  <summary class="small text-muted">{{ m.sources|length }} source(s)</summary>
+                  <ol class="small mt-2 mb-0">
+                    {% for s in m.sources %}
+                      <li>
+                        <strong>{{ s.filename|default:s.document_id }}</strong>
+                        {% if s.section_path %}<span class="text-muted"> · {{ s.section_path }}</span>{% endif %}
+                        {% if s.pages %}<span class="text-muted"> · p.{{ s.pages|join:"," }}</span>{% endif %}
+                        <div class="text-muted">{{ s.snippet|truncatechars:200 }}</div>
+                      </li>
+                    {% endfor %}
+                  </ol>
+                </details>
+              {% endif %}
+            </div>
+          {% empty %}
+            <div class="text-center text-muted py-5">
+              <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
+              <div>Send your first message below.</div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="card-footer bg-white">
+          <form id="chat-form" class="d-flex gap-2">
+            {% csrf_token %}
+            <textarea id="prompt" class="form-control" rows="2"
+                      placeholder="Ask something about your documents…" required></textarea>
+            <button id="send-btn" class="btn btn-primary px-4" type="submit">
+              <i class="bi bi-send"></i>
+            </button>
+          </form>
+          <div id="status" class="small text-muted mt-2">Ready.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const STREAM_URL = "{{ stream_url }}";
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const form = document.getElementById("chat-form");
+  const promptEl = document.getElementById("prompt");
+  const sendBtn = document.getElementById("send-btn");
+  const messages = document.getElementById("messages");
+  const status = document.getElementById("status");
+
+  function escapeHtml(s) {
+    return (s || "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function scrollDown() { messages.scrollTop = messages.scrollHeight; }
+
+  function appendBubble(role) {
+    const wrap = document.createElement("div");
+    wrap.className = "msg msg-" + role;
+    wrap.innerHTML = `<div class="msg-role"><i class="bi bi-${role === 'user' ? 'person' : 'robot'}"></i> ${role}</div>
+                      <div class="msg-body"></div>`;
+    messages.appendChild(wrap);
+    scrollDown();
+    return wrap.querySelector(".msg-body");
+  }
+
+  function renderSources(target, sources) {
+    if (!sources || !sources.length) return;
+    const det = document.createElement("details");
+    det.className = "msg-sources mt-2";
+    det.innerHTML = `<summary class="small text-muted">${sources.length} source(s)</summary>`;
+    const ol = document.createElement("ol");
+    ol.className = "small mt-2 mb-0";
+    for (const s of sources) {
+      const li = document.createElement("li");
+      const sec = s.section_path ? ` · ${escapeHtml(s.section_path)}` : "";
+      const pg = s.pages && s.pages.length ? ` · p.${s.pages.join(",")}` : "";
+      li.innerHTML = `<strong>${escapeHtml(s.filename || s.document_id)}</strong>
+                     <span class="text-muted">${sec}${pg}</span>
+                     <div class="text-muted">${escapeHtml((s.snippet||"").slice(0,200))}</div>`;
+      ol.appendChild(li);
+    }
+    det.appendChild(ol);
+    target.parentElement.appendChild(det);
+  }
+
+  function parseSSEChunk(text) {
+    const events = [];
+    for (const block of text.split(/\n\n/)) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+      let event = "message", data = "";
+      for (const line of trimmed.split("\n")) {
+        if (line.startsWith(":")) continue;
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += (data ? "\n" : "") + line.slice(5).trim();
+      }
+      events.push({event, data});
+    }
+    return events;
+  }
+
+  form.addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const content = promptEl.value.trim();
+    if (!content) return;
+
+    sendBtn.disabled = true;
+    promptEl.disabled = true;
+    appendBubble("user").textContent = content;
+    promptEl.value = "";
+    status.textContent = "Streaming…";
+
+    const assistantBody = appendBubble("assistant");
+    let assistantText = "";
+    let sources = [];
+
+    try {
+      const resp = await fetch(STREAM_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf,
+        },
+        body: JSON.stringify({content}),
+      });
+      if (!resp.ok || !resp.body) {
+        const txt = await resp.text();
+        assistantBody.innerHTML = `<span class="text-danger">${escapeHtml(txt || resp.statusText)}</span>`;
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        const idx = buffer.lastIndexOf("\n\n");
+        if (idx < 0) continue;
+        const chunk = buffer.slice(0, idx + 2);
+        buffer = buffer.slice(idx + 2);
+        for (const ev of parseSSEChunk(chunk)) {
+          let payload;
+          try { payload = JSON.parse(ev.data); } catch { payload = {text: ev.data}; }
+          if (ev.event === "token") {
+            assistantText += (payload.text || "");
+            assistantBody.textContent = assistantText;
+            scrollDown();
+          } else if (ev.event === "sources") {
+            sources = payload.sources || sources;
+          } else if (ev.event === "done") {
+            if (payload.text && !assistantText) {
+              assistantText = payload.text;
+              assistantBody.textContent = assistantText;
+            }
+            if (payload.sources && payload.sources.length) sources = payload.sources;
+          } else if (ev.event === "error") {
+            assistantBody.innerHTML += `<div class="text-danger small mt-1">${escapeHtml(payload.detail || ev.data)}</div>`;
+          }
+        }
+      }
+      renderSources(assistantBody, sources);
+      status.textContent = "Ready.";
+    } catch (err) {
+      status.textContent = "Stream error: " + err.message;
+    } finally {
+      sendBtn.disabled = false;
+      promptEl.disabled = false;
+      promptEl.focus();
+    }
+  });
+
+  scrollDown();
+})();
+</script>
+{% endblock %}

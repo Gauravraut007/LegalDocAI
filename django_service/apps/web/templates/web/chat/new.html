@@ -1,0 +1,31 @@
+{% extends "web/base.html" %}
+{% block title %}New chat · LDIP{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 720px;">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <h4 class="mb-3"><i class="bi bi-chat-square-text me-2"></i>Start a new chat</h4>
+      <p class="text-muted small">Choose one or more <strong>ready</strong> documents to ground the conversation.</p>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">Title <span class="text-muted small">(optional)</span></label>
+          {{ form.title }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Documents</label>
+          {{ form.document_ids }}
+          <div class="form-text">{{ form.document_ids.help_text }}</div>
+          {{ form.document_ids.errors }}
+        </div>
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-play-circle me-1"></i>Create &amp; open
+          </button>
+          <a href="{% url 'web:chat_sessions' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

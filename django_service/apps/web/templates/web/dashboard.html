@@ -1,0 +1,117 @@
+{% extends "web/base.html" %}
+{% block title %}Dashboard · LDIP{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+    <div>
+      <h2 class="mb-0">Welcome back, {{ user.display_name }}</h2>
+      <div class="text-muted">
+        Active workspace:
+        <strong>{{ active_workspace.name|default:"— none —" }}</strong>
+      </div>
+    </div>
+    <div class="d-flex gap-2 mt-3 mt-md-0">
+      <a href="{% url 'web:document_upload' %}" class="btn btn-primary">
+        <i class="bi bi-cloud-upload me-1"></i>Upload document
+      </a>
+      <a href="{% url 'web:chat_new' %}" class="btn btn-outline-primary">
+        <i class="bi bi-chat-square-text me-1"></i>New chat
+      </a>
+    </div>
+  </div>
+
+  {% if not active_workspace %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-5 text-center">
+        <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+        <h4 class="mt-3">No workspace yet</h4>
+        <p class="text-muted">Create your first workspace to start uploading documents.</p>
+        <a href="{% url 'web:workspace_new' %}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-1"></i>Create workspace
+        </a>
+      </div>
+    </div>
+  {% else %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Total documents</div>
+          <div class="display-6 fw-bold">{{ doc_counts.total }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Ready</div>
+          <div class="display-6 fw-bold text-success">{{ doc_counts.ready }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Processing</div>
+          <div class="display-6 fw-bold text-warning">{{ doc_counts.processing }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="text-muted small">Failed</div>
+          <div class="display-6 fw-bold text-danger">{{ doc_counts.failed }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-file-earmark-text me-1"></i>Recent documents</strong>
+          <a href="{% url 'web:documents' %}" class="small">View all</a>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for d in recent_documents %}
+          <a href="{% url 'web:document_detail' d.id %}" class="list-group-item list-group-item-action">
+            <div class="d-flex justify-content-between">
+              <div class="text-truncate">
+                <i class="bi bi-file-earmark me-1 text-muted"></i>
+                {{ d.title|default:d.original_filename|truncatechars:60 }}
+              </div>
+              {% include "web/partials/status_badge.html" with status=d.status %}
+            </div>
+            <small class="text-muted">{{ d.doc_type }} · {{ d.created_at|date:"Y-m-d H:i" }}</small>
+          </a>
+          {% empty %}
+          <div class="list-group-item text-muted small">No documents yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <strong><i class="bi bi-chat-dots me-1"></i>Recent chats</strong>
+          <a href="{% url 'web:chat_sessions' %}" class="small">View all</a>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for s in recent_sessions %}
+          <a href="{% url 'web:chat_detail' s.id %}" class="list-group-item list-group-item-action">
+            <div class="text-truncate">{{ s.title|default:"(untitled)"|truncatechars:60 }}</div>
+            <small class="text-muted">{{ s.updated_at|date:"Y-m-d H:i" }}</small>
+          </a>
+          {% empty %}
+          <div class="list-group-item text-muted small">No chats yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

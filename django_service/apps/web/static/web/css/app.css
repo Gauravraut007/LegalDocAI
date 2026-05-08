@@ -1,0 +1,31 @@
+/* LDIP web styles */
+:root {
+  --ldip-radius: .65rem;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif; }
+
+.card { border-radius: var(--ldip-radius); }
+.btn { border-radius: .5rem; }
+.form-control, .form-select { border-radius: .5rem; }
+
+.alert.alert-success { background-color: #d1e7dd; color: #0f5132; }
+
+.navbar-brand i { vertical-align: -2px; }
+
+/* Chat bubbles */
+.msg { padding: .85rem 1rem; border-radius: var(--ldip-radius); margin-bottom: .9rem;
+       max-width: 85%; }
+.msg-user { background: #e7f1ff; margin-left: auto; }
+.msg-assistant { background: #f8f9fa; border: 1px solid #e9ecef; }
+.msg-system { background: #fff3cd; border: 1px solid #ffe69c; }
+.msg-role { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+            color: #6c757d; margin-bottom: .25rem; }
+.msg-body { white-space: pre-wrap; word-wrap: break-word; }
+.msg-sources summary { cursor: pointer; }
+.msg-sources ol { padding-left: 1.25rem; }
+
+/* Login/register card spacing */
+.card-body h3, .card-body h4 { color: #1a2747; }
+
+/* List groups: subtle hover */
+.list-group-item-action:hover { background: #f8fafc; }
