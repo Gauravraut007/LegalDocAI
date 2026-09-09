@@ -1,5 +1,9 @@
 # Legal Document Intelligence Platform
 
+AI-powered legal document intelligence platform for ingesting, processing,
+retrieving, and interacting with contracts, legal text, and workspace-based
+document workflows.
+
 Production-grade monorepo containing:
 
 - **fastapi_service/** — FastAPI 0.111 + SQLAlchemy 2 (async) + Celery + FAISS + sentence-transformers + Gemini LLM.
