@@ -162,11 +162,13 @@ async def upload_document(
     from app.workers.tasks import launch_pipeline
 
     try:
+        logger.info(f"Launching pipeline for document {document_id}")
         chain_id = await asyncio.to_thread(launch_pipeline, document_id)
+        logger.info(f"Pipeline launched successfully, chain_id={chain_id}")
         job.celery_task_id = chain_id
         await session.commit()
     except Exception as exc:  # noqa: BLE001
-        logger.exception("celery_dispatch_failed", error=str(exc))
+        logger.exception("celery_dispatch_failed", extra={"error": str(exc), "document_id": str(document_id)})
         # Don't fail the upload; the doc is persisted and can be re-queued later.
 
     return DocumentUploadResponse(

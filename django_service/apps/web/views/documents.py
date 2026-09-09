@@ -8,6 +8,7 @@ import httpx
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -224,14 +225,14 @@ def _check_doc_access(user, document_id):
 
 async def document_events_stream(request, pk):
     """Async SSE proxy: ``/web/documents/<id>/events`` → FastAPI SSE."""
-    user = await sync_to_async(lambda: request.user)()
+    user = await sync_to_async(get_user, thread_sensitive=True)(request)
     if not user.is_authenticated:
         return HttpResponse(status=401)
     doc = await _check_doc_access(user, str(pk))
     if doc is None:
         return HttpResponse(status=404)
 
-    token = await sync_to_async(mint_access_token)(user)
+    token = await sync_to_async(mint_access_token, thread_sensitive=True)(user)
 
     async def proxy():
         try:

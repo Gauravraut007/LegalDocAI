@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://redis:6379/2"
 
     # ------------------------------------------------------- LLM (Gemini) --
-    GEMINI_API_KEY: str = ""
+    GEMINI_API_KEY: str = "AIzaSyDedjmn8hxYh65ySRyFHjG3IyuXp7Zc4mg"
     GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # ------------------------------------- Local embeddings / vector store --

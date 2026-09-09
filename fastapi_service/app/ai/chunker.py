@@ -236,7 +236,7 @@ class Chunk:
 # =========================================================================
 class DocumentChunker:
     HARD_TOKEN_CAP = 800  # never exceed this per chunk
-
+                                                                        
     def __init__(
         self,
         chunk_size: int | None = None,

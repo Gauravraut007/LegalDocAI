@@ -1,0 +1,164 @@
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-5pt}]
+
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape Gaurav Raut} \\ \vspace{1pt}
+    \small 8830799130 $|$
+    \href{mailto:gauravrautedu@gmail.com}{\underline{gauravrautedu@gmail.com}} $|$
+    \href{https://linkedin.com/in/gaurav-raut-790198211}{\underline{linkedin.com/in/gaurav-raut-790198211}} $|$
+    \href{https://github.com/Gauravraut007}{\underline{github.com/Gauravraut007}} $|$
+    Mumbai, India
+\end{center}
+
+%-----------SUMMARY-----------
+\section{Summary}
+\small{
+Backend Software Engineer with 1 year of experience building scalable APIs, RAG-based AI pipelines, and data-driven applications in a production legal-tech environment. Proficient in Python, FastAPI, Django, and PostgreSQL, with hands-on experience in LLM integrations, vector databases, containerization, and AWS cloud services. Proven ability to deliver high-impact features independently and within cross-functional teams.
+}
+\vspace{-2pt}
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {LexLegis.ai}{June 2025 -- Present}
+      {Software Engineer}{Mumbai, India}
+      \resumeItemListStart
+          \resumeItem{Shipped \textbf{18+ production backend features} in \textbf{Python, FastAPI, and Django} for a live legal-tech platform handling \textbf{8,000+ daily API requests} serving \textbf{600+ active users}.}
+          \resumeItem{Optimized \textbf{PostgreSQL} schemas and queries, achieving \textbf{52\% latency reduction} across \textbf{11 critical tables}, improving throughput for \textbf{10,000+ daily document records}.}
+          \resumeItem{Delivered \textbf{14 REST \& WebSocket APIs} handling \textbf{450+ concurrent connections} with \textbf{<180ms average response time}, enabling real-time sync/async interactions.}
+          \resumeItem{Resolved \textbf{9 critical production bugs} via root-cause analysis, reducing recurring incidents by \textbf{75\%} and improving system uptime from \textbf{96.2\% to 99.8\%}.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+      \resumeProjectHeading
+          {\textbf{LegalDocumentInteract} $|$ \emph{AI-Powered Legal Document Assistant}}{LexLegis.ai}
+          \resumeItemListStart
+            \resumeItem{Architected an end-to-end \textbf{RAG pipeline} with multi-query embedding, FAISS retrieval, reciprocal rank fusion, cross-encoder reranking, and MMR, reducing document search latency to \textbf{200--500ms} and enabling semantic understanding far beyond keyword matching.}
+            \resumeItem{Built a production-grade document ingestion pipeline processing \textbf{600+ documents per batch} with \textbf{3-stage idempotent resumability}, reducing end-to-end processing time by \textbf{58\%} via \textbf{6 distributed Celery workers} and Prometheus observability.}
+            \resumeItem{Developed \textbf{WebSocket + REST APIs} supporting \textbf{12,000+ monthly conversations} with \textbf{97\% citation accuracy}, streaming Gemini responses in \textbf{<1.8 seconds} per query with JWT-gated multi-document support.}
+            \resumeItem{Containerized \textbf{7-service microservices architecture} (FastAPI, Django, PostgreSQL, Redis, Celery, Nginx) via \textbf{Docker \& Docker Compose}, enabling \textbf{24 concurrent document workflows} with \textbf{43\% improvement in resource utilization}; deployed PostgreSQL advisory locks ensuring zero data race conditions.}
+          \resumeItemListEnd
+
+      \resumeProjectHeading
+          {\textbf{Placement Trends Dashboard} $|$ \emph{Big Data \& Analytics}}{Jan 2025 -- Feb 2025}
+          \resumeItemListStart
+            \resumeItem{Built an interactive analytics dashboard analyzing student placement factors, improving prediction accuracy by \textbf{30\%}.}
+            \resumeItem{Automated the full ETL pipeline with \textbf{AWS Lambda, Glue, and S3}, cutting manual data handling time by \textbf{40\%}.}
+            \resumeItem{Leveraged \textbf{AWS Athena} for serverless real-time querying, improving key factor identification by \textbf{25\%}.}
+            \resumeItem{Delivered \textbf{Power BI} executive dashboards, boosting administrative decision-making efficiency by \textbf{35\%}.}
+          \resumeItemListEnd
+
+    \resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Python, SQL} \\
+     \textbf{Frameworks \& Libraries}{: FastAPI, Django, SQLAlchemy, Alembic, Pytest, Celery, Streamlit} \\
+     \textbf{Databases}{: PostgreSQL, Redis, FAISS, ChromaDB} \\
+     \textbf{DevOps \& Containerization}{: Docker, Docker Compose, AWS (Lambda, Glue, S3, Athena), Git} \\
+     \textbf{AI/ML}{: RAG Pipelines, LLM Integrations, Vector Databases, Embeddings, Prompt Engineering} \\
+     \textbf{Developer Tools}{: GitHub, VS Code, Postman, WebSockets, Prometheus, Power BI}
+    }}
+ \end{itemize}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {CDAC -- Shriram Mantri Vidyanidhi Info Tech Academy}{Mumbai, India}
+      {PG Diploma in Big Data Analytics $|$ 66.56\%}{Aug 2024 -- Feb 2025}
+    \resumeSubheading
+      {Government College of Engineering, Jalgaon}{Jalgaon, India}
+      {B.Tech in Mechanical Engineering $|$ 62.10\%}{Jul 2019 -- Aug 2023}
+  \resumeSubHeadingListEnd
+
+%-------------------------------------------
+\end{document}

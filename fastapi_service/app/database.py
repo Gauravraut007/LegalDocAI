@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import AsyncGenerator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -55,12 +55,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Create tables if they do not exist (development convenience)."""
-    from app.models import document  # noqa: F401
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database initialized")
+    """Verify database connectivity; schema changes are managed by Alembic."""
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    logger.info("Database connection initialized")
 
 
 async def close_db() -> None:

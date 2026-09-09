@@ -100,6 +100,8 @@ services:
     volumes:
       - faiss_data:/data/faiss
       - media_data:/data/uploads
+    healthcheck:
+      disable: true
 
   celery_beat:
     image: ldip/fastapi:dev
@@ -107,7 +109,7 @@ services:
       context: ./fastapi_service
       dockerfile: Dockerfile
     container_name: ldip_celery_beat
-    command: celery -A app.workers.tasks beat -l info
+    command: celery -A app.workers.tasks beat -l info --schedule=/tmp/celerybeat-schedule
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${FASTAPI_DB_NAME:-fastapi_db}
@@ -125,6 +127,8 @@ services:
     volumes:
       - faiss_data:/data/faiss
       - media_data:/data/uploads
+    healthcheck:
+      disable: true
 
   django:
     build:
