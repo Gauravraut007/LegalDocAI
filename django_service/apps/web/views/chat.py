@@ -161,7 +161,7 @@ class ChatSessionDetailView(View):
 
         return render(request, self.template_name, {
             "session": sess,
-            "messages": upstream_messages,
+            "chat_messages": upstream_messages,
             "documents": [docs_by_id.get(d) for d in doc_ids if d in docs_by_id],
             "stream_url": f"/web/chat/{sess.id}/stream",
         })

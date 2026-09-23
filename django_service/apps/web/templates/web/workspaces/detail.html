@@ -1,27 +1,26 @@
 {% extends "web/base.html" %}
-{% block title %}{{ workspace.name }} · LDIP{% endblock %}
+{% block title %}{{ workspace.name }} · Legal Document Intelligence{% endblock %}
+{% block breadcrumb %}<i class="bi bi-chevron-right"></i><a class="crumb-link" href="{% url 'web:workspaces' %}">Team &amp; access</a><i class="bi bi-chevron-right"></i><span class="current">{{ workspace.name|truncatechars:40 }}</span>{% endblock %}
 {% block content %}
-<div class="container">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-wrap">
+  <div class="page-header">
     <div>
-      <h3 class="mb-0">{{ workspace.name }}</h3>
-      <div class="text-muted small">
-        <code>{{ workspace.slug }}</code> · plan <span class="badge text-bg-secondary text-uppercase">{{ workspace.plan }}</span>
-        · your role <span class="badge text-bg-info">{{ role|default:"—" }}</span>
+      <div class="eyebrow">{{ workspace.slug }}</div>
+      <h1>{{ workspace.name }}</h1>
+      <div class="d-flex align-items-center gap-2 mt-2">
+        <span class="plan-pill">{{ workspace.plan }}</span>
+        <span class="role-pill">{{ role|default:"—" }}</span>
       </div>
     </div>
-    <a href="{% url 'web:workspaces' %}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>All workspaces
-    </a>
   </div>
 
   <div class="row g-4">
     <div class="col-lg-7">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white"><strong><i class="bi bi-people me-1"></i>Members</strong></div>
+      <div class="surface-panel">
+        <div class="panel-heading"><div><div class="eyebrow">TEAM</div><h2>Members</h2></div></div>
         <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead class="table-light">
+          <table class="data-table">
+            <thead>
               <tr><th>Email</th><th>Role</th><th>Joined</th><th></th></tr>
             </thead>
             <tbody>
@@ -30,7 +29,7 @@
                 <td>{{ m.user.email }}</td>
                 <td>
                   {% if is_admin and m.role != 'owner' %}
-                    <form method="post" action="{% url 'web:workspace_members' workspace.id %}" class="d-flex gap-1">
+                    <form method="post" action="{% url 'web:workspace_members' workspace.id %}" class="inline-form-select">
                       {% csrf_token %}
                       <input type="hidden" name="action" value="role">
                       <input type="hidden" name="member_id" value="{{ m.id }}">
@@ -42,10 +41,10 @@
                       <button class="btn btn-sm btn-outline-primary">Save</button>
                     </form>
                   {% else %}
-                    <span class="badge text-bg-secondary text-uppercase">{{ m.role }}</span>
+                    <span class="plan-pill">{{ m.role }}</span>
                   {% endif %}
                 </td>
-                <td class="small text-muted">{{ m.joined_at|date:"Y-m-d" }}</td>
+                <td class="cell-muted">{{ m.joined_at|date:"Y-m-d" }}</td>
                 <td class="text-end">
                   {% if is_admin and m.role != 'owner' %}
                     <form method="post" action="{% url 'web:workspace_members' workspace.id %}" class="d-inline">
@@ -64,7 +63,7 @@
           </table>
         </div>
         {% if is_admin %}
-        <div class="card-body bg-body-tertiary border-top">
+        <div class="panel-body-tight border-top py-3">
           <form method="post" action="{% url 'web:workspace_members' workspace.id %}" class="row g-2">
             {% csrf_token %}
             <input type="hidden" name="action" value="add">
@@ -88,15 +87,15 @@
     </div>
 
     <div class="col-lg-5">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white"><strong><i class="bi bi-envelope me-1"></i>Pending invitations</strong></div>
-        <ul class="list-group list-group-flush">
+      <div class="surface-panel">
+        <div class="panel-heading"><div><div class="eyebrow">PENDING</div><h2>Invitations</h2></div></div>
+        <div>
           {% for inv in invitations %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div class="invite-item">
             <div>
-              <div>{{ inv.email }} <span class="badge text-bg-light">{{ inv.role }}</span></div>
-              <div class="small text-muted">expires {{ inv.expires_at|date:"Y-m-d H:i" }}</div>
-              <code class="small text-break">{{ inv.token }}</code>
+              <div class="invite-email">{{ inv.email }} <span class="plan-pill">{{ inv.role }}</span></div>
+              <div class="invite-meta">expires {{ inv.expires_at|date:"Y-m-d H:i" }}</div>
+              <code class="invite-token">{{ inv.token }}</code>
             </div>
             {% if is_admin %}
             <form method="post" action="{% url 'web:workspace_invitations' workspace.id %}">
@@ -108,13 +107,13 @@
               </button>
             </form>
             {% endif %}
-          </li>
+          </div>
           {% empty %}
-          <li class="list-group-item text-muted small">No pending invitations.</li>
+          <div class="empty-panel"><i class="bi bi-envelope"></i><span>No pending invitations.</span></div>
           {% endfor %}
-        </ul>
+        </div>
         {% if is_admin %}
-        <div class="card-body bg-body-tertiary border-top">
+        <div class="panel-body-tight border-top py-3">
           <form method="post" action="{% url 'web:workspace_invitations' workspace.id %}" class="row g-2">
             {% csrf_token %}
             <input type="hidden" name="action" value="create">

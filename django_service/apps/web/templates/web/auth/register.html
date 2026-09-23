@@ -1,33 +1,44 @@
 {% extends "web/base.html" %}
-{% block title %}Create account · LDIP{% endblock %}
+{% block title %}Create account · Legal Document Intelligence{% endblock %}
 {% block content %}
-<div class="container" style="max-width: 520px;">
-  <div class="card border-0 shadow-sm mt-5">
-    <div class="card-body p-4 p-md-5">
-      <h3 class="mb-3">Create your account</h3>
-      <p class="text-muted small">A personal workspace will be created automatically.</p>
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label">Email</label>
-          {{ form.email }}
-          {{ form.email.errors }}
+<div class="auth-page">
+  <div class="auth-frame">
+    <div class="auth-side">
+      <a href="{% url 'web:login' %}" class="brand-mark"><span>LD</span><strong>Legal Document Intelligence</strong></a>
+      <div class="auth-side-copy">
+        <h2>Set up your workspace in minutes.</h2>
+        <p>A personal workspace is created automatically — invite your team once you're in.</p>
+      </div>
+      <div class="auth-side-foot">Legal Document Intelligence Platform</div>
+    </div>
+    <div class="auth-main">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="form-card-icon"><i class="bi bi-person-plus-fill"></i></div>
+          <h2>Create your account</h2>
+          <p>A personal workspace will be created automatically.</p>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Full name <span class="text-muted small">(optional)</span></label>
-          {{ form.full_name }}
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Password</label>
-          {{ form.password }}
-          <div class="form-text">{{ form.password.help_text }}</div>
-          {{ form.password.errors }}
-        </div>
-        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Create account</button>
-      </form>
-      <p class="text-center text-muted small mt-4 mb-0">
-        Already have an account? <a href="{% url 'web:login' %}">Sign in</a>
-      </p>
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            {{ form.email }}
+            {{ form.email.errors }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Full name <span class="text-muted fw-normal">(optional)</span></label>
+            {{ form.full_name }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            {{ form.password }}
+            <div class="form-text">{{ form.password.help_text }}</div>
+            {{ form.password.errors }}
+          </div>
+          <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Create account</button>
+        </form>
+        <p class="auth-foot">Already have an account? <a href="{% url 'web:login' %}">Sign in</a></p>
+      </div>
     </div>
   </div>
 </div>

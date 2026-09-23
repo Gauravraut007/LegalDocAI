@@ -1,32 +1,30 @@
 {% extends "web/base.html" %}
-{% block title %}Upload document · LDIP{% endblock %}
+{% block title %}Upload document · Legal Document Intelligence{% endblock %}
+{% block breadcrumb %}<i class="bi bi-chevron-right"></i><a class="crumb-link" href="{% url 'web:documents' %}">Documents</a><i class="bi bi-chevron-right"></i><span class="current">Upload</span>{% endblock %}
 {% block content %}
-<div class="container" style="max-width: 640px;">
-  <div class="card border-0 shadow-sm">
-    <div class="card-body p-4">
-      <h4 class="mb-1"><i class="bi bi-cloud-upload me-2"></i>Upload document</h4>
-      <p class="text-muted small">Workspace: <strong>{{ active_workspace.name }}</strong></p>
-      <form method="post" enctype="multipart/form-data" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label">File</label>
-          {{ form.file }}
-          <div class="form-text">{{ form.file.help_text }}</div>
-          {{ form.file.errors }}
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Title <span class="text-muted small">(optional)</span></label>
-          {{ form.title }}
-          {{ form.title.errors }}
-        </div>
-        <div class="d-flex gap-2">
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-upload me-1"></i>Upload &amp; process
-          </button>
-          <a href="{% url 'web:documents' %}" class="btn btn-outline-secondary">Cancel</a>
-        </div>
-      </form>
-    </div>
+<div class="page-wrap-narrow">
+  <div class="form-card">
+    <div class="form-card-icon"><i class="bi bi-cloud-upload-fill"></i></div>
+    <h2>Upload document</h2>
+    <p class="form-lead">Workspace: <strong>{{ active_workspace.name }}</strong></p>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <div class="dropzone mb-3">
+        <i class="bi bi-file-earmark-arrow-up"></i>
+        <div class="mt-2 small text-muted">{{ form.file.help_text }}</div>
+        {{ form.file }}
+        {{ form.file.errors }}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Title <span class="text-muted fw-normal">(optional)</span></label>
+        {{ form.title }}
+        {{ form.title.errors }}
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-upload me-1"></i>Upload &amp; process</button>
+        <a href="{% url 'web:documents' %}" class="btn btn-light">Cancel</a>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}

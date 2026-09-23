@@ -1,38 +1,35 @@
 {% extends "web/base.html" %}
-{% block title %}Workspaces · LDIP{% endblock %}
+{% block title %}Workspaces · Legal Document Intelligence{% endblock %}
+{% block breadcrumb %}<i class="bi bi-chevron-right"></i><span class="current">Team &amp; access</span>{% endblock %}
 {% block content %}
-<div class="container">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0"><i class="bi bi-people me-2"></i>Workspaces</h3>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary" href="{% url 'web:invitation_accept' %}">
-        <i class="bi bi-envelope-open me-1"></i>Accept invitation
-      </a>
-      <a class="btn btn-primary" href="{% url 'web:workspace_new' %}">
-        <i class="bi bi-plus-circle me-1"></i>New workspace
-      </a>
+<div class="page-wrap">
+  <div class="page-header">
+    <div><div class="eyebrow">TEAM &amp; ACCESS</div><h1>Workspaces</h1></div>
+    <div class="page-header-actions">
+      <a class="btn btn-light" href="{% url 'web:invitation_accept' %}"><i class="bi bi-envelope-open me-1"></i>Accept invitation</a>
+      <a class="btn btn-primary" href="{% url 'web:workspace_new' %}"><i class="bi bi-plus-circle me-1"></i>New workspace</a>
     </div>
   </div>
   <div class="row g-3">
     {% for ws in workspaces %}
     <div class="col-md-6 col-lg-4">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between">
-            <h5 class="mb-1"><a href="{% url 'web:workspace_detail' ws.id %}" class="text-decoration-none">{{ ws.name }}</a></h5>
-            <span class="badge text-bg-secondary text-uppercase">{{ ws.plan }}</span>
+      <div class="workspace-card">
+        <div class="workspace-card-top">
+          <div>
+            <h3><a href="{% url 'web:workspace_detail' ws.id %}">{{ ws.name }}</a></h3>
+            <div class="slug">{{ ws.slug }}</div>
           </div>
-          <div class="text-muted small">{{ ws.slug }}</div>
-          <div class="mt-3 small">
-            <i class="bi bi-person-fill text-muted me-1"></i>{{ ws.owner.email }}<br>
-            <i class="bi bi-clock-history text-muted me-1"></i>{{ ws.created_at|date:"Y-m-d" }}
-          </div>
+          <span class="plan-pill">{{ ws.plan }}</span>
+        </div>
+        <div class="workspace-card-meta">
+          <div><i class="bi bi-person-fill"></i> {{ ws.owner.email }}</div>
+          <div><i class="bi bi-clock-history"></i> {{ ws.created_at|date:"Y-m-d" }}</div>
         </div>
       </div>
     </div>
     {% empty %}
     <div class="col-12">
-      <div class="alert alert-info">No workspaces yet.</div>
+      <div class="surface-panel"><div class="empty-panel"><i class="bi bi-people"></i><span>No workspaces yet.</span><a href="{% url 'web:workspace_new' %}">Create one</a></div></div>
     </div>
     {% endfor %}
   </div>

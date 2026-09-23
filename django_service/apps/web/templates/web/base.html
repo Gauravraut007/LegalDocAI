@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Legal Document Intelligence{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
@@ -12,99 +15,72 @@
 <body class="bg-body-tertiary">
 
 {% if user.is_authenticated %}
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
-    <div class="container-fluid">
-      <a class="navbar-brand fw-bold" href="{% url 'web:dashboard' %}">
-        <i class="bi bi-shield-lock-fill text-info me-2"></i>LDIP
-      </a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="nav">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'web:dashboard' %}">
-              <i class="bi bi-speedometer2 me-1"></i>Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'web:documents' %}">
-              <i class="bi bi-file-earmark-text me-1"></i>Documents
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'web:chat_sessions' %}">
-              <i class="bi bi-chat-dots me-1"></i>Chat
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{% url 'web:workspaces' %}">
-              <i class="bi bi-people me-1"></i>Workspaces
-            </a>
-          </li>
-        </ul>
-
-        <ul class="navbar-nav align-items-lg-center">
-          {% if user_workspaces %}
-          <li class="nav-item dropdown me-lg-3">
-            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-              <i class="bi bi-building me-1"></i>
-              {{ active_workspace.name|default:"No workspace" }}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              {% for ws in user_workspaces %}
-              <li>
-                <form method="post" action="{% url 'web:workspace_switch' %}">
-                  {% csrf_token %}
-                  <input type="hidden" name="workspace_id" value="{{ ws.id }}">
-                  <input type="hidden" name="next" value="{{ request.path }}">
-                  <button class="dropdown-item {% if active_workspace.id == ws.id %}active{% endif %}" type="submit">
-                    <i class="bi bi-{% if active_workspace.id == ws.id %}check-circle-fill text-success{% else %}circle{% endif %} me-2"></i>
-                    {{ ws.name }}
-                    <small class="text-muted ms-2">{{ ws.plan }}</small>
-                  </button>
-                </form>
-              </li>
-              {% endfor %}
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <a class="dropdown-item" href="{% url 'web:workspace_new' %}">
-                  <i class="bi bi-plus-circle me-2"></i>New workspace
-                </a>
-              </li>
-              <li>
-                <a class="dropdown-item" href="{% url 'web:invitation_accept' %}">
-                  <i class="bi bi-envelope-open me-2"></i>Accept invitation
-                </a>
-              </li>
-            </ul>
-          </li>
-          {% endif %}
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
-              <i class="bi bi-person-circle me-1"></i>{{ user.display_name }}
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="{% url 'web:profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
-              <li><a class="dropdown-item" href="{% url 'web:password_change' %}"><i class="bi bi-key me-2"></i>Change password</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <form method="post" action="{% url 'web:logout' %}" class="m-0">
-                  {% csrf_token %}
-                  <button type="submit" class="dropdown-item text-danger">
-                    <i class="bi bi-box-arrow-right me-2"></i>Sign out
-                  </button>
-                </form>
-              </li>
-            </ul>
-          </li>
+  <div class="app-shell">
+  <aside class="app-sidebar" id="app-sidebar">
+    <div class="sidebar-brand">
+      <a href="{% url 'web:dashboard' %}" class="brand-mark"><span>LD</span><strong>Legal Document Intelligence</strong></a>
+      <button class="sidebar-close d-lg-none" type="button" data-sidebar-close aria-label="Close navigation"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="workspace-switcher">
+      <span class="sidebar-label">WORKSPACE</span>
+      {% if user_workspaces %}
+      <div class="dropdown">
+        <button class="workspace-button dropdown-toggle" data-bs-toggle="dropdown" type="button">
+          <span class="workspace-icon"><i class="bi bi-building"></i></span>
+          <span class="text-truncate">{{ active_workspace.name|default:"Choose workspace" }}</span>
+        </button>
+        <ul class="dropdown-menu shadow-sm">
+          {% for ws in user_workspaces %}
+          <li><form method="post" action="{% url 'web:workspace_switch' %}">{% csrf_token %}<input type="hidden" name="workspace_id" value="{{ ws.id }}"><input type="hidden" name="next" value="{{ request.path }}"><button class="dropdown-item {% if active_workspace.id == ws.id %}active{% endif %}" type="submit">{{ ws.name }}</button></form></li>
+          {% endfor %}
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="{% url 'web:workspace_new' %}"><i class="bi bi-plus me-2"></i>New workspace</a></li>
         </ul>
       </div>
+      {% else %}
+        <a href="{% url 'web:workspace_new' %}" class="workspace-button"><span class="workspace-icon"><i class="bi bi-plus"></i></span><span>Create workspace</span></a>
+      {% endif %}
     </div>
-  </nav>
+    <nav class="sidebar-nav" aria-label="Main navigation">
+      <span class="sidebar-label">WORKSPACE TOOLS</span>
+      <a class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'web:dashboard' %}"><i class="bi bi-grid-1x2"></i><span>Overview</span></a>
+      <a class="sidebar-link {% if request.resolver_match.url_name == 'documents' or request.resolver_match.url_name == 'document_detail' or request.resolver_match.url_name == 'document_upload' %}active{% endif %}" href="{% url 'web:documents' %}"><i class="bi bi-files"></i><span>Documents</span></a>
+      <a class="sidebar-link {% if request.resolver_match.url_name == 'chat_sessions' or request.resolver_match.url_name == 'chat_detail' or request.resolver_match.url_name == 'chat_new' %}active{% endif %}" href="{% url 'web:chat_sessions' %}"><i class="bi bi-chat-square-text"></i><span>Chat</span></a>
+      <a class="sidebar-link {% if request.resolver_match.url_name == 'workspaces' or request.resolver_match.url_name == 'workspace_detail' %}active{% endif %}" href="{% url 'web:workspaces' %}"><i class="bi bi-people"></i><span>Team &amp; access</span></a>
+    </nav>
+  </aside>
+  <div class="app-main-column">
+    <header class="app-topbar">
+      <button class="sidebar-toggle d-lg-none" type="button" data-sidebar-open aria-label="Open navigation"><i class="bi bi-list"></i></button>
+      <div class="topbar-context"><span class="topbar-kicker">LEGAL WORKSPACE</span><span class="topbar-title">{{ active_workspace.name|default:"Set up your workspace" }}</span></div>
+      <div class="topbar-actions">
+        <a href="{% url 'web:chat_new' %}" class="topbar-ask"><i class="bi bi-stars"></i><span>Ask about a document</span></a>
+        <div class="dropdown user-menu">
+          <button class="user-menu-toggle dropdown-toggle" data-bs-toggle="dropdown" type="button">
+            <span class="user-avatar">{{ user.display_name|default:user.email|slice:":1"|upper }}</span>
+            <span class="user-menu-name d-none d-md-inline">{{ user.display_name|default:user.email }}</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+            <li><a class="dropdown-item" href="{% url 'web:profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
+            <li><a class="dropdown-item" href="{% url 'web:password_change' %}"><i class="bi bi-key me-2"></i>Change password</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <form method="post" action="{% url 'web:logout' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2"></i>Sign out</button>
+              </form>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+    <nav class="breadcrumb-bar" aria-label="Breadcrumb">
+      <a href="{% url 'web:dashboard' %}"><i class="bi bi-house"></i></a>
+      {% block breadcrumb %}{% endblock %}
+    </nav>
 {% endif %}
 
-<main class="container-fluid py-4">
+<main class="app-content">
   {% if messages %}
     <div class="container">
       {% for m in messages %}
@@ -119,11 +95,26 @@
   {% block content %}{% endblock %}
 </main>
 
-<footer class="text-center text-muted small py-4">
-  Legal Document Intelligence Platform
-</footer>
+{% if user.is_authenticated %}
+      <footer class="app-footer">Legal Document Intelligence · your documents stay organized, searchable, and grounded.</footer>
+    </div>
+  </div>
+  <div class="sidebar-scrim d-lg-none" data-sidebar-close></div>
+{% else %}
+  <footer class="text-center text-muted small py-4">Legal Document Intelligence Platform</footer>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% if user.is_authenticated %}
+<script>
+  document.querySelectorAll('[data-sidebar-open]').forEach(function (button) {
+    button.addEventListener('click', function () { document.body.classList.add('sidebar-open'); });
+  });
+  document.querySelectorAll('[data-sidebar-close]').forEach(function (button) {
+    button.addEventListener('click', function () { document.body.classList.remove('sidebar-open'); });
+  });
+</script>
+{% endif %}
 {% block extra_js %}{% endblock %}
 </body>
 </html>

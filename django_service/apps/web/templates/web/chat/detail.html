@@ -1,22 +1,20 @@
 {% extends "web/base.html" %}
 {% load web_extras %}
-{% block title %}{{ session.title|default:"Chat" }} · LDIP{% endblock %}
+{% block title %}{{ session.title|default:"Chat" }} · Legal Document Intelligence{% endblock %}
+{% block breadcrumb %}<i class="bi bi-chevron-right"></i><a class="crumb-link" href="{% url 'web:chat_sessions' %}">Chat</a><i class="bi bi-chevron-right"></i><span class="current">{{ session.title|default:"Conversation"|truncatechars:40 }}</span>{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-  <div class="row g-3">
-    <!-- Sidebar: documents in this session -->
-    <div class="col-lg-3">
-      <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
-        <div class="card-header bg-white"><strong><i class="bi bi-file-earmark me-1"></i>Documents</strong></div>
-        <ul class="list-group list-group-flush small">
+<div class="page-wrap">
+  <div class="chat-shell">
+    <div class="chat-doc-panel">
+      <div class="surface-panel">
+        <div class="panel-heading"><div><div class="eyebrow">GROUNDED ON</div><h2>Documents</h2></div></div>
+        <ul class="list-group list-group-flush">
           {% for d in documents %}
             {% if d %}
-            <li class="list-group-item">
-              <a href="{% url 'web:document_detail' d.id %}" class="text-decoration-none">
-                {{ d.title|default:d.original_filename|truncatechars:50 }}
-              </a>
-              <div class="text-muted">{{ d.doc_type }}</div>
+            <li class="list-group-item chat-doc-item">
+              <a href="{% url 'web:document_detail' d.id %}">{{ d.title|default:d.original_filename|truncatechars:50 }}</a>
+              <div class="doc-type">{{ d.doc_type }}</div>
             </li>
             {% endif %}
           {% endfor %}
@@ -24,59 +22,58 @@
       </div>
     </div>
 
-    <!-- Conversation -->
-    <div class="col-lg-9">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <div>
-            <strong>{{ session.title|default:"(untitled)" }}</strong>
-            <div class="small text-muted">Session <code>{{ session.id }}</code></div>
+    <div class="chat-thread-card">
+      <div class="chat-thread-head">
+        <div>
+          <strong>{{ session.title|default:"(untitled)" }}</strong>
+          <div class="session-id">Session <code>{{ session.id }}</code></div>
+        </div>
+        <a href="{% url 'web:chat_sessions' %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>All sessions
+        </a>
+      </div>
+
+      <div id="messages">
+        {% for m in chat_messages %}
+          <div class="msg msg-{{ m.role }}">
+            <div class="msg-avatar"><i class="bi bi-{% if m.role == 'user' %}person-fill{% else %}stars{% endif %}"></i></div>
+            <div class="msg-col">
+              <div class="msg-role">{% if m.role == 'user' %}You{% else %}{{ m.role|title }}{% endif %}</div>
+              <div class="msg-content">
+                <div class="msg-body">{{ m.content|chat_format }}</div>
+                {% if m.sources %}
+                  <details class="msg-sources">
+                    <summary>{{ m.sources|length }} source(s)</summary>
+                    <ol class="mb-0">
+                      {% for s in m.sources %}
+                        <li>
+                          <strong>{{ s.filename|default:s.document_id }}</strong>
+                          {% if s.section_path %}<span class="text-muted"> · {{ s.section_path }}</span>{% endif %}
+                          {% if s.pages %}<span class="text-muted"> · p.{{ s.pages|join:"," }}</span>{% endif %}
+                          <div class="text-muted">{{ s.snippet|truncatechars:200 }}</div>
+                        </li>
+                      {% endfor %}
+                    </ol>
+                  </details>
+                {% endif %}
+              </div>
+            </div>
           </div>
-          <a href="{% url 'web:chat_sessions' %}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-arrow-left me-1"></i>All sessions
-          </a>
-        </div>
+        {% empty %}
+          <div class="empty-panel"><i class="bi bi-chat-square-text"></i><span>Send your first message below.</span></div>
+        {% endfor %}
+      </div>
 
-        <div id="messages" class="card-body" style="min-height: 50vh; max-height: 65vh; overflow-y: auto;">
-          {% for m in messages %}
-            <div class="msg msg-{{ m.role }}">
-              <div class="msg-role"><i class="bi bi-{% if m.role == 'user' %}person{% else %}robot{% endif %}"></i> {{ m.role }}</div>
-              <div class="msg-body">{{ m.content|linebreaksbr }}</div>
-              {% if m.sources %}
-                <details class="msg-sources mt-2">
-                  <summary class="small text-muted">{{ m.sources|length }} source(s)</summary>
-                  <ol class="small mt-2 mb-0">
-                    {% for s in m.sources %}
-                      <li>
-                        <strong>{{ s.filename|default:s.document_id }}</strong>
-                        {% if s.section_path %}<span class="text-muted"> · {{ s.section_path }}</span>{% endif %}
-                        {% if s.pages %}<span class="text-muted"> · p.{{ s.pages|join:"," }}</span>{% endif %}
-                        <div class="text-muted">{{ s.snippet|truncatechars:200 }}</div>
-                      </li>
-                    {% endfor %}
-                  </ol>
-                </details>
-              {% endif %}
-            </div>
-          {% empty %}
-            <div class="text-center text-muted py-5">
-              <i class="bi bi-chat-square-text" style="font-size: 2rem;"></i>
-              <div>Send your first message below.</div>
-            </div>
-          {% endfor %}
-        </div>
-
-        <div class="card-footer bg-white">
-          <form id="chat-form" class="d-flex gap-2">
-            {% csrf_token %}
-            <textarea id="prompt" class="form-control" rows="2"
-                      placeholder="Ask something about your documents…" required></textarea>
-            <button id="send-btn" class="btn btn-primary px-4" type="submit">
-              <i class="bi bi-send"></i>
-            </button>
-          </form>
-          <div id="status" class="small text-muted mt-2">Ready.</div>
-        </div>
+      <div class="chat-composer">
+        <form id="chat-form" class="composer-box" novalidate>
+          {% csrf_token %}
+          <textarea id="prompt" class="composer-input" rows="1"
+                    placeholder="Ask something about your documents…"></textarea>
+          <button id="send-btn" class="composer-send" type="submit" aria-label="Send message" disabled>
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </form>
+        <div id="status" class="small chat-status">Ready.</div>
       </div>
     </div>
   </div>
@@ -98,13 +95,38 @@
     return (s || "").replace(/[&<>"']/g, c => ({
       "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
+  function formatChatText(s) {
+    let html = escapeHtml(s || "");
+    html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, "<em>$1</em>");
+    html = html.replace(/`([^`\n]+?)`/g, "<code>$1</code>");
+    html = html.replace(/\[S(\d+)\]/g, '<sup class="cite">S$1</sup>');
+    return html.replace(/\n/g, "<br>");
+  }
   function scrollDown() { messages.scrollTop = messages.scrollHeight; }
+  function autoResizePrompt() {
+    promptEl.style.height = "auto";
+    promptEl.style.height = Math.min(promptEl.scrollHeight, 160) + "px";
+  }
+
+  const STAGE_LABELS = {
+    understanding: "Reading your question…",
+    searching: "Searching your documents…",
+    reading: "Reading relevant passages…",
+    generating: "Drafting your answer…",
+  };
 
   function appendBubble(role) {
     const wrap = document.createElement("div");
     wrap.className = "msg msg-" + role;
-    wrap.innerHTML = `<div class="msg-role"><i class="bi bi-${role === 'user' ? 'person' : 'robot'}"></i> ${role}</div>
-                      <div class="msg-body"></div>`;
+    const thinkingHtml = role === "assistant"
+      ? `<div class="msg-thinking"><span class="dot-pulse"></span><span class="dot-pulse"></span><span class="dot-pulse"></span><span class="thinking-label">Thinking…</span></div>`
+      : "";
+    wrap.innerHTML = `<div class="msg-avatar"><i class="bi bi-${role === 'user' ? 'person-fill' : 'stars'}"></i></div>
+                      <div class="msg-col">
+                        <div class="msg-role">${role === 'user' ? 'You' : 'Assistant'}</div>
+                        <div class="msg-content">${thinkingHtml}<div class="msg-body"></div></div>
+                      </div>`;
     messages.appendChild(wrap);
     scrollDown();
     return wrap.querySelector(".msg-body");
@@ -113,10 +135,10 @@
   function renderSources(target, sources) {
     if (!sources || !sources.length) return;
     const det = document.createElement("details");
-    det.className = "msg-sources mt-2";
-    det.innerHTML = `<summary class="small text-muted">${sources.length} source(s)</summary>`;
+    det.className = "msg-sources";
+    det.innerHTML = `<summary>${sources.length} source(s)</summary>`;
     const ol = document.createElement("ol");
-    ol.className = "small mt-2 mb-0";
+    ol.className = "mb-0";
     for (const s of sources) {
       const li = document.createElement("li");
       const sec = s.section_path ? ` · ${escapeHtml(s.section_path)}` : "";
@@ -155,11 +177,19 @@
     promptEl.disabled = true;
     appendBubble("user").textContent = content;
     promptEl.value = "";
-    status.textContent = "Streaming…";
+    autoResizePrompt();
+    status.textContent = "Thinking…";
 
     const assistantBody = appendBubble("assistant");
+    const assistantContent = assistantBody.parentElement;
+    const thinkingEl = assistantContent.querySelector(".msg-thinking");
+    const thinkingLabel = thinkingEl ? thinkingEl.querySelector(".thinking-label") : null;
     let assistantText = "";
     let sources = [];
+
+    function exitThinking() {
+      if (thinkingEl && thinkingEl.parentElement) thinkingEl.remove();
+    }
 
     try {
       const resp = await fetch(STREAM_URL, {
@@ -189,20 +219,33 @@
         for (const ev of parseSSEChunk(chunk)) {
           let payload;
           try { payload = JSON.parse(ev.data); } catch { payload = {text: ev.data}; }
-          if (ev.event === "token") {
+          if (ev.event === "stage") {
+            if (thinkingLabel) thinkingLabel.textContent = STAGE_LABELS[payload.stage] || payload.message || "Working…";
+            status.textContent = payload.message || "Thinking…";
+          } else if (ev.event === "token") {
+            exitThinking();
             assistantText += (payload.text || "");
-            assistantBody.textContent = assistantText;
+            assistantBody.innerHTML = formatChatText(assistantText);
+            status.textContent = "Streaming…";
             scrollDown();
           } else if (ev.event === "sources") {
             sources = payload.sources || sources;
+          } else if (ev.event === "no_context") {
+            exitThinking();
+            assistantText = payload.message || "I couldn't find an answer in the available documents.";
+            assistantBody.innerHTML = formatChatText(assistantText);
           } else if (ev.event === "done") {
+            exitThinking();
             if (payload.text && !assistantText) {
               assistantText = payload.text;
-              assistantBody.textContent = assistantText;
+              assistantBody.innerHTML = formatChatText(assistantText);
             }
             if (payload.sources && payload.sources.length) sources = payload.sources;
           } else if (ev.event === "error") {
-            assistantBody.innerHTML += `<div class="text-danger small mt-1">${escapeHtml(payload.detail || ev.data)}</div>`;
+            exitThinking();
+            const message = payload.message || payload.detail || ev.data || "The assistant could not generate a response.";
+            assistantBody.innerHTML = `<span class="text-danger">${escapeHtml(message)}</span>`;
+            status.textContent = "Request failed.";
           }
         }
       }
@@ -211,9 +254,20 @@
     } catch (err) {
       status.textContent = "Stream error: " + err.message;
     } finally {
-      sendBtn.disabled = false;
       promptEl.disabled = false;
+      sendBtn.disabled = !promptEl.value.trim();
       promptEl.focus();
+    }
+  });
+
+  promptEl.addEventListener("input", function () {
+    sendBtn.disabled = !promptEl.value.trim();
+    autoResizePrompt();
+  });
+  promptEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled) form.requestSubmit();
     }
   });
 
