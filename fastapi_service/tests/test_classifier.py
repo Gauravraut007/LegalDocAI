@@ -1,5 +1,5 @@
 """Unit tests for the rule-based classifier."""
-from app.ai.classifier import classify_document
+from app.ai.classifier import classify_document, classify_document_with_confidence
 from app.models.document import DocType
 
 
@@ -26,5 +26,14 @@ def test_classifier_detects_contract() -> None:
     assert classify_document(text) == DocType.contract
 
 
-def test_classifier_unknown_for_empty() -> None:
-    assert classify_document("") == DocType.unknown
+def test_classifier_reports_confidence_and_unknown_for_empty() -> None:
+    result = classify_document_with_confidence(
+        "This Agreement is made on the 1st day of January. "
+        "The parties hereto agree as follows. Term and Termination. Governing Law shall be Delaware."
+    )
+    assert result.doc_type == DocType.contract
+    assert 0.7 <= result.confidence <= 1.0
+
+    empty = classify_document_with_confidence("")
+    assert empty.doc_type == DocType.unknown
+    assert empty.confidence == 0.0

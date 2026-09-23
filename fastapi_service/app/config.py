@@ -93,12 +93,17 @@ class Settings(BaseSettings):
     RAG_ENABLE_RERANK: bool = True
     RAG_QUERY_EXPANSION: bool = True
     RAG_QUERY_CACHE_TTL: int = 3600
+    RAG_EVAL_ENABLED: bool = True
+    RAG_EVAL_SAMPLE_LIMIT: int = 50
+    RAG_GROUNDING_MIN_SCORE: float = 0.35
+    DOCUMENT_CLASSIFICATION_MIN_CONFIDENCE: float = 0.55
     RERANKER_MODEL_NAME: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # LLM generation
     LLM_TEMPERATURE: float = 0.2
     LLM_TOP_P: float = 0.9
     LLM_MAX_OUTPUT_TOKENS: int = 1500
+    LLM_REQUEST_TIMEOUT_SECONDS: int = 120
     LLM_CIRCUIT_FAIL_THRESHOLD: int = 5
     LLM_CIRCUIT_WINDOW_SECONDS: int = 30
     LLM_CIRCUIT_OPEN_SECONDS: int = 60

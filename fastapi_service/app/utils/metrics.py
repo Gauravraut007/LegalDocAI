@@ -23,6 +23,10 @@ DOCUMENTS_INDEXED = Counter(
     "ldip_documents_indexed_total",
     "Total number of documents that reached the 'ready' state.",
 )
+CLASSIFICATION_LOW_CONFIDENCE = Counter(
+    "ldip_document_classification_low_confidence_total",
+    "Documents whose classifier result was below the configured confidence gate.",
+)
 
 # --------------------------------------------------------------- histograms --
 OCR_DURATION = Histogram(

@@ -211,6 +211,7 @@ class GeminiClient:
         user_message: str,
         history: Optional[List[dict]] = None,
     ) -> AsyncIterator[StreamChunk]:
+        logger.info("gemini_stream_started model=%s", self.model_name)
         _configure()
         _BREAKER.allow()
         import google.generativeai as genai
@@ -233,34 +234,66 @@ class GeminiClient:
                     system_instruction=system_prompt,
                     safety_settings=_safety_settings(),
                 )
-                stream = model.generate_content(
-                    contents, generation_config=cfg, stream=True
-                )
-                finish_reason: Optional[str] = None
-                for event in stream:
-                    txt = ""
-                    try:
-                        txt = event.text or ""
-                    except Exception:  # noqa: BLE001
-                        pass
+                try:
+                    stream = model.generate_content(
+                        contents,
+                        generation_config=cfg,
+                        stream=True,
+                        request_options={
+                            "timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS,
+                        },
+                    )
+                    finish_reason: Optional[str] = None
+                    for event in stream:
+                        txt = ""
+                        try:
+                            txt = event.text or ""
+                        except Exception:  # noqa: BLE001
+                            pass
+                        if txt:
+                            loop.call_soon_threadsafe(
+                                queue.put_nowait, StreamChunk(text=txt)
+                            )
+                        if hasattr(event, "candidates") and event.candidates:
+                            cand = event.candidates[0]
+                            fr = getattr(cand, "finish_reason", None)
+                            if fr is not None:
+                                finish_reason = str(fr)
+                    final_usage = _extract_usage(stream)
+                    loop.call_soon_threadsafe(
+                        queue.put_nowait,
+                        StreamChunk(
+                            finish_reason=finish_reason or "stop", usage=final_usage
+                        ),
+                    )
+                    loop.call_soon_threadsafe(queue.put_nowait, SENTINEL)
+                    _BREAKER.record_success()
+                    return
+                except Exception as stream_exc:  # noqa: BLE001
+                    logger.warning(
+                        "gemini_stream_timeout_fallback model=%s timeout=%ss error=%s",
+                        self.model_name,
+                        settings.LLM_REQUEST_TIMEOUT_SECONDS,
+                        type(stream_exc).__name__,
+                    )
+                    resp = model.generate_content(
+                        contents,
+                        generation_config=cfg,
+                        stream=False,
+                    )
+                    txt = (resp.text or "") if hasattr(resp, "text") else ""
                     if txt:
                         loop.call_soon_threadsafe(
                             queue.put_nowait, StreamChunk(text=txt)
                         )
-                    if hasattr(event, "candidates") and event.candidates:
-                        cand = event.candidates[0]
-                        fr = getattr(cand, "finish_reason", None)
-                        if fr is not None:
-                            finish_reason = str(fr)
-                final_usage = _extract_usage(stream)
-                loop.call_soon_threadsafe(
-                    queue.put_nowait,
-                    StreamChunk(
-                        finish_reason=finish_reason or "stop", usage=final_usage
-                    ),
-                )
-                loop.call_soon_threadsafe(queue.put_nowait, SENTINEL)
-                _BREAKER.record_success()
+                    final_usage = _extract_usage(resp)
+                    loop.call_soon_threadsafe(
+                        queue.put_nowait,
+                        StreamChunk(finish_reason="stop", usage=final_usage),
+                    )
+                    loop.call_soon_threadsafe(queue.put_nowait, SENTINEL)
+                    _BREAKER.record_success()
+                    return
             except Exception as exc:  # noqa: BLE001
                 _BREAKER.record_failure()
                 loop.call_soon_threadsafe(queue.put_nowait, exc)
@@ -271,8 +304,10 @@ class GeminiClient:
             while True:
                 item = await queue.get()
                 if item is SENTINEL:
+                    logger.info("gemini_stream_finished model=%s", self.model_name)
                     break
                 if isinstance(item, Exception):
+                    logger.exception("gemini_stream_failed model=%s", self.model_name)
                     raise item
                 yield item  # type: ignore[misc]
         finally:

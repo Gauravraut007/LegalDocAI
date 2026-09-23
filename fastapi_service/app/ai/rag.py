@@ -15,6 +15,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.evaluation import evaluate_answer_quality
 from app.ai.llm import GeminiClient, StreamChunk
 from app.ai.prompts import REFUSAL_PHRASE, build_user_message, select_prompt
 from app.ai.retriever import RetrievedChunk, Retriever
@@ -142,43 +143,46 @@ class RAGService:
         is_staff: bool = False,
     ) -> AsyncIterator[RAGEvent]:
         t_start = time.monotonic()
+        logger.info("rag_started", query=request.query[:120], document_count=len(request.document_ids))
+
+        yield RAGEvent("stage", {"stage": "understanding", "message": "Reading your question…"})
 
         normalised = _normalise_query(request.query)
         if not normalised:
-            # Defensive: if greeting-stripping consumed everything, fall
-            # back to the raw query so we never reject a real user message.
             normalised = (request.query or "").strip()
         if not normalised:
             yield RAGEvent("error", {"message": "empty query"})
             return
 
-        # --- query expansion -----------------------------------------------
         queries = [normalised]
         if settings.RAG_QUERY_EXPANSION:
+            logger.info("rag_query_expansion_started")
             try:
                 expansions = await self._expand_query(normalised)
                 queries.extend(expansions)
+                logger.info("rag_query_expansion_finished", expansion_count=len(expansions))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("query_expansion_failed", error=str(exc))
 
-        # --- retrieval -----------------------------------------------------
         docs = await self._load_documents(session, request.document_ids)
         if not docs:
             yield RAGEvent("error", {"message": "no documents available"})
             return
 
+        yield RAGEvent("stage", {"stage": "searching", "message": "Searching your documents…"})
+        logger.info("rag_retrieval_started", query_count=len(queries))
         retrieved = await asyncio.to_thread(
             self.retriever.retrieve,
             queries=queries,
             document_ids=[str(d.id) for d in docs],
         )
+        logger.info("rag_retrieval_finished", result_count=len(retrieved))
         if not retrieved:
             metrics.RAG_NO_CONTEXT.inc()
             yield RAGEvent("no_context", {"message": REFUSAL_PHRASE})
             yield RAGEvent("done", {"reason": "no_context"})
             return
 
-        # Hydrate text + metadata from DB, then rerank+MMR.
         await self._hydrate_chunks(session, retrieved, docs)
         retrieved = [c for c in retrieved if c.text]
         if not retrieved:
@@ -187,14 +191,12 @@ class RAGService:
             yield RAGEvent("done", {"reason": "no_context"})
             return
 
-        reranked = await asyncio.to_thread(
-            self.retriever.rerank, normalised, retrieved
-        )
-        diversified = await asyncio.to_thread(
-            self.retriever.mmr, normalised, reranked
-        )
+        yield RAGEvent("stage", {"stage": "reading", "message": "Reading relevant passages…"})
+        logger.info("rag_rerank_started", chunk_count=len(retrieved))
+        reranked = await asyncio.to_thread(self.retriever.rerank, normalised, retrieved)
+        logger.info("rag_rerank_finished", result_count=len(reranked))
+        diversified = await asyncio.to_thread(self.retriever.mmr, normalised, reranked)
 
-        # --- prompt --------------------------------------------------------
         sources, context_block = self._assemble_context(diversified, docs)
         if not sources:
             metrics.RAG_NO_CONTEXT.inc()
@@ -208,14 +210,13 @@ class RAGService:
             override=request.system_prompt_override if is_staff else None,
         )
         user_message = build_user_message(normalised, context_block)
-        history = _summarise_history(
-            request.chat_history, settings.RAG_HISTORY_MAX_TURNS
-        )
+        history = _summarise_history(request.chat_history, settings.RAG_HISTORY_MAX_TURNS)
 
-        # --- emit sources first so the UI can render anchors -------------
+        logger.info("rag_sources_ready", source_count=len(sources))
         yield RAGEvent("sources", {"sources": [s.to_dict() for s in sources]})
 
-        # --- stream LLM ----------------------------------------------------
+        yield RAGEvent("stage", {"stage": "generating", "message": "Drafting your answer…"})
+        logger.info("rag_llm_started", model=self.llm.model_name)
         first_byte_seen = False
         full_text_chunks: list[str] = []
         usage: dict = {}
@@ -229,6 +230,7 @@ class RAGService:
                 if event.text:
                     if not first_byte_seen:
                         first_byte_seen = True
+                        logger.info("rag_llm_first_token", latency_ms=int((time.monotonic() - t_start) * 1000))
                         metrics.LLM_TTFB.observe(time.monotonic() - t_start)
                     full_text_chunks.append(event.text)
                     yield RAGEvent("token", {"text": event.text})
@@ -246,6 +248,27 @@ class RAGService:
             metrics.LLM_TOKENS_IN.inc(usage.get("input_tokens", 0))
             metrics.LLM_TOKENS_OUT.inc(usage.get("output_tokens", 0))
 
+        evaluation = evaluate_answer_quality(
+            full_text,
+            [s.snippet for s in sources],
+            normalised,
+        )
+        grounding_score = evaluation["grounding_score"]
+
+        low_confidence_message = (
+            "I can’t answer this reliably from the available document excerpts. "
+            "Not enough evidence in the retrieved sources."
+        )
+        if full_text and grounding_score < settings.RAG_GROUNDING_MIN_SCORE:
+            logger.warning(
+                "rag_grounding_low_confidence",
+                grounding_score=grounding_score,
+                threshold=settings.RAG_GROUNDING_MIN_SCORE,
+                question=normalised,
+            )
+            finish_reason = "grounding_low_confidence"
+            full_text = low_confidence_message
+
         yield RAGEvent(
             "done",
             {
@@ -255,7 +278,13 @@ class RAGService:
                 "sources": [s.to_dict() for s in sources],
                 "latency_ms": int((time.monotonic() - t_start) * 1000),
                 "model_name": self.llm.model_name,
+                "grounding_score": grounding_score,
             },
+        )
+        logger.info(
+            "rag_finished",
+            latency_ms=int((time.monotonic() - t_start) * 1000),
+            grounding_score=grounding_score,
         )
 
     # --------------------------------------------------------- expansion

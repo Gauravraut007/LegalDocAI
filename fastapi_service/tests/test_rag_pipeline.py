@@ -157,3 +157,71 @@ async def test_rag_streams_tokens_and_sources() -> None:
     done = events[-1]
     assert done.data["finish_reason"] == "stop"
     assert "[S1]" in done.data["text"]
+
+
+@pytest.mark.asyncio
+async def test_rag_rejects_low_grounding_answers() -> None:
+    doc_id = uuid.uuid4()
+    chunk_id = uuid.uuid4()
+    doc = Document(
+        id=doc_id,
+        owner_user_id=uuid.uuid4(),
+        workspace_id=None,
+        original_filename="contract.pdf",
+        stored_path="/tmp/x",
+        mime_type="application/pdf",
+        size_bytes=1,
+        sha256="x",
+        doc_type=DocType.contract,
+        status=DocStatus.ready,
+    )
+    rows = [
+        _ChunkRow(
+            id_=chunk_id,
+            doc_id=doc_id,
+            text="The parties agree that confidentiality is required for two years.",
+            section="Section 2",
+            page=1,
+        )
+    ]
+    fake_chunks = [
+        RetrievedChunk(
+            document_id=str(doc_id),
+            chunk_id=str(chunk_id),
+            score=0.9,
+        )
+    ]
+
+    class _LowGroundingLLM:
+        model_name = "fake-flash"
+
+        async def generate(self, **kwargs):  # noqa: ANN003
+            from app.ai.llm import CompletionResult
+
+            return CompletionResult(text='["paraphrase one", "paraphrase two"]', usage={})
+
+        async def stream(self, **kwargs) -> AsyncIterator[StreamChunk]:  # noqa: ANN003
+            yield StreamChunk(text="The contract says the fee is $1,000,000.")
+            yield StreamChunk(finish_reason="stop", usage={})
+
+    svc = RAGService(retriever=_FakeRetriever(fake_chunks), llm=_LowGroundingLLM())  # type: ignore[arg-type]
+    from app.config import settings
+
+    original_qe = settings.RAG_QUERY_EXPANSION
+    settings.RAG_QUERY_EXPANSION = False
+    try:
+        events = []
+        async for ev in svc.run_stream(
+            RAGRequest(
+                query="What is the confidentiality period?",
+                document_ids=[doc_id],
+            ),
+            session=_FakeAsyncSession([doc], rows),  # type: ignore[arg-type]
+        ):
+            events.append(ev)
+    finally:
+        settings.RAG_QUERY_EXPANSION = original_qe
+
+    done = next(e for e in events if e.type == "done")
+    assert done.data["finish_reason"] == "grounding_low_confidence"
+    assert "not enough evidence" in done.data["text"].lower()

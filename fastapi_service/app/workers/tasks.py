@@ -125,6 +125,7 @@ def _set_status(
     page_count: Optional[int] = None,
     language: Optional[str] = None,
     doc_type: Optional[DocType] = None,
+    extra: Optional[dict] = None,
 ) -> None:
     doc = session.get(Document, uuid.UUID(document_id))
     if doc is None:
@@ -139,6 +140,8 @@ def _set_status(
         doc.language = language
     if doc_type is not None:
         doc.doc_type = doc_type
+    if extra:
+        doc.extra = {**(doc.extra or {}), **extra}
     session.add(doc)
 
 
@@ -281,7 +284,7 @@ def validate_document(self, document_id: str) -> str:
     max_retries=2,
 )
 def ocr_document(self, document_id: str) -> str:
-    from app.ai.classifier import classify_document
+    from app.ai.classifier import classify_document_with_confidence
     from app.ai.ocr_engine import OCREngine
 
     stage = "ocr"
@@ -355,7 +358,17 @@ def ocr_document(self, document_id: str) -> str:
             os.fsync(fh.fileno())
         os.replace(spans_path + ".tmp", spans_path)
 
-        doc_type = classify_document(ocr_result.full_text)
+        classification = classify_document_with_confidence(ocr_result.full_text)
+        classification_is_confident = (
+            classification.confidence >= settings.DOCUMENT_CLASSIFICATION_MIN_CONFIDENCE
+        )
+        doc_type = (
+            classification.doc_type
+            if classification_is_confident
+            else DocType.unknown
+        )
+        if not classification_is_confident:
+            metrics.CLASSIFICATION_LOW_CONFIDENCE.inc()
 
         with SyncSessionLocal() as session:
             # Upsert the document_versions row (UNIQUE(document_id, kind)).
@@ -385,6 +398,14 @@ def ocr_document(self, document_id: str) -> str:
                 page_count=ocr_result.total_pages,
                 language=ocr_result.language,
                 doc_type=doc_type,
+                extra={
+                    "classification": {
+                        "detected_type": classification.doc_type.value,
+                        "stored_type": doc_type.value,
+                        "confidence": classification.confidence,
+                        "reason": classification.reason,
+                    }
+                },
             )
             _update_job(
                 session,
@@ -409,6 +430,8 @@ def ocr_document(self, document_id: str) -> str:
                 "chars": len(ocr_result.full_text),
                 "language": ocr_result.language,
                 "doc_type": doc_type.value,
+                "classification_confidence": classification.confidence,
+                "classification_reason": classification.reason,
             },
         )
         return document_id
