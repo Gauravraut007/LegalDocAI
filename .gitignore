@@ -28,6 +28,13 @@ data/
 *.index
 *.meta
 
+# Redis snapshots
+dump.rdb
+redis/dump.rdb
+
+# Personal notes
+INTERVIEW_PREP.md
+
 # Django
 django_service/staticfiles/
 django_service/media/
