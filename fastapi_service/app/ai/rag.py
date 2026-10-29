@@ -158,11 +158,28 @@ class RAGService:
         if settings.RAG_QUERY_EXPANSION:
             logger.info("rag_query_expansion_started")
             try:
-                expansions = await self._expand_query(normalised)
+                timeout_seconds = min(
+                    settings.RAG_QUERY_EXPANSION_TIMEOUT_SECONDS,
+                    settings.LLM_REQUEST_TIMEOUT_SECONDS,
+                )
+                expansions = await asyncio.wait_for(
+                    self._expand_query(normalised),
+                    timeout=timeout_seconds,
+                )
                 queries.extend(expansions)
                 logger.info("rag_query_expansion_finished", expansion_count=len(expansions))
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "query_expansion_timed_out",
+                    timeout_seconds=timeout_seconds,
+                    message="Gemini query expansion timed out; continuing with the original question",
+                )
             except Exception as exc:  # noqa: BLE001
-                logger.warning("query_expansion_failed", error=str(exc))
+                logger.warning(
+                    "query_expansion_failed",
+                    error=str(exc),
+                    message="Gemini query expansion failed; continuing with the original question",
+                )
 
         docs = await self._load_documents(session, request.document_ids)
         if not docs:

@@ -35,10 +35,11 @@ RUN sed -i '/python-magic-bin/d' requirements.txt \
 # Pre-download the local sentence-transformers model into the image so the
 # runtime container starts offline-friendly.
 ARG EMBEDDING_MODEL_NAME=BAAI/bge-small-en-v1.5
+ARG RERANKER_MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
 ENV HF_HOME=/opt/hf_cache \
     SENTENCE_TRANSFORMERS_HOME=/opt/hf_cache \
     TRANSFORMERS_OFFLINE=0
-RUN /opt/venv/bin/python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL_NAME}')"
+RUN /opt/venv/bin/python -c "from sentence_transformers import CrossEncoder, SentenceTransformer; SentenceTransformer('${EMBEDDING_MODEL_NAME}'); CrossEncoder('${RERANKER_MODEL_NAME}')"
 
 # ============================== RUNTIME STAGE ===============================
 FROM python:${PYTHON_VERSION}-slim AS runtime

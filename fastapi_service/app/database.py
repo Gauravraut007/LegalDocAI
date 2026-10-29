@@ -23,6 +23,21 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _engine_kwargs_for_url(url: str, *, sync: bool = False) -> dict[str, object]:
+    """Return backend-appropriate pooling options.
+
+    SQLite engines do not accept PostgreSQL-specific connection-pool arguments
+    such as ``pool_size`` and ``max_overflow``. The test suite and local memory
+    database use ``sqlite+aiosqlite:///:memory:``, so we keep those options only
+    for non-SQLite backends.
+    """
+
+    kwargs: dict[str, object] = {"echo": False, "pool_pre_ping": True, "pool_recycle": 3600}
+    if not url.startswith("sqlite"):
+        kwargs.update({"pool_size": 10 if not sync else 5, "max_overflow": 20 if not sync else 10})
+    return kwargs
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -30,11 +45,7 @@ class Base(DeclarativeBase):
 # ---------------------------------------------------------------- async ----
 engine = create_async_engine(
     settings.database_url,
-    echo=False,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    **_engine_kwargs_for_url(settings.database_url),
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -68,11 +79,7 @@ async def close_db() -> None:
 # ---------------------------------------------------------------- sync -----
 sync_engine = create_engine(
     settings.sync_database_url,
-    echo=False,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=3600,
+    **_engine_kwargs_for_url(settings.sync_database_url, sync=True),
     future=True,
 )
 

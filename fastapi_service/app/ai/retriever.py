@@ -156,9 +156,23 @@ class Retriever:
         # Compute embeddings for any chunks missing them.
         missing = [c for c in chunks if c.embedding is None]
         if missing:
-            vecs = self.embedder.embed_documents([c.text or "" for c in missing])
-            for c, v in zip(missing, vecs):
-                c.embedding = v
+            get_vectors = getattr(self.store, "get_vectors", None)
+            vectors = (
+                get_vectors([(c.document_id, c.chunk_id) for c in missing])
+                if callable(get_vectors)
+                else {}
+            )
+            unindexed = []
+            for chunk in missing:
+                vector = vectors.get((str(chunk.document_id), str(chunk.chunk_id)))
+                if vector is None:
+                    unindexed.append(chunk)
+                else:
+                    chunk.embedding = vector
+            if unindexed:
+                vecs = self.embedder.embed_documents([c.text or "" for c in unindexed])
+                for chunk, vector in zip(unindexed, vecs):
+                    chunk.embedding = vector
         q_vec = self.embedder.embed_query(query)
 
         return _mmr_select(q_vec, chunks, final_k, lambda_mult)

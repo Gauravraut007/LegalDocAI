@@ -89,10 +89,27 @@ class IndexMeta:
     chunk_ids: list[str] = field(default_factory=list)
     type: str = "flat"
     created_at: float = 0.0
+    _chunk_positions: Optional[dict[str, int]] = field(default=None, init=False, repr=False)
 
     @property
     def vector_count(self) -> int:
         return len(self.chunk_ids)
+
+    def position_for(self, chunk_id: str) -> Optional[int]:
+        if self._chunk_positions is None:
+            self._chunk_positions = {
+                stored_id: position for position, stored_id in enumerate(self.chunk_ids)
+            }
+        return self._chunk_positions.get(chunk_id)
+
+    def append_chunk_ids(self, chunk_ids: Sequence[str]) -> None:
+        start = len(self.chunk_ids)
+        self.chunk_ids.extend(str(chunk_id) for chunk_id in chunk_ids)
+        if self._chunk_positions is not None:
+            self._chunk_positions.update(
+                (str(chunk_id), start + offset)
+                for offset, chunk_id in enumerate(chunk_ids)
+            )
 
     def to_dict(self) -> dict:
         return {
@@ -198,7 +215,7 @@ class FaissVectorStore:
                 f"vector dim {normalised.shape[1]} != index dim {meta.dim}"
             )
         idx.add(normalised)
-        meta.chunk_ids.extend(str(c) for c in chunk_ids)
+        meta.append_chunk_ids(chunk_ids)
         self._persist(document_id, idx, meta)
         return int(vectors.shape[0])
 
@@ -237,6 +254,40 @@ class FaissVectorStore:
                 )
         all_hits.sort(key=lambda h: h.score, reverse=True)
         return all_hits[:k]
+
+    def get_vectors(
+        self,
+        chunk_refs: Sequence[tuple[uuid.UUID | str, uuid.UUID | str]],
+    ) -> dict[tuple[str, str], np.ndarray]:
+        """Reconstruct indexed vectors for document/chunk pairs when available."""
+        requested: dict[str, set[str]] = {}
+        for document_id, chunk_id in chunk_refs:
+            requested.setdefault(str(document_id), set()).add(str(chunk_id))
+
+        vectors: dict[tuple[str, str], np.ndarray] = {}
+        for document_id, chunk_ids in requested.items():
+            loaded = self.load(document_id)
+            if loaded is None:
+                continue
+            index, meta = loaded
+            if not hasattr(index, "reconstruct"):
+                continue
+            for chunk_id in chunk_ids:
+                position = meta.position_for(chunk_id)
+                if position is None or position >= index.ntotal:
+                    continue
+                try:
+                    vector = index.reconstruct(position)
+                except (RuntimeError, TypeError, AttributeError) as exc:
+                    logger.debug(
+                        "could not reconstruct vector for %s/%s: %s",
+                        document_id,
+                        chunk_id,
+                        exc,
+                    )
+                    continue
+                vectors[(document_id, chunk_id)] = np.asarray(vector, dtype=np.float32)
+        return vectors
 
     # ------------------------------------------------------------ DELETE
     def delete_index(self, document_id: uuid.UUID | str) -> bool:

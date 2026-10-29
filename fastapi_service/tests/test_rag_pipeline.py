@@ -6,6 +6,8 @@ Postgres / FAISS / network — it validates the orchestrator wiring.
 """
 from __future__ import annotations
 
+import sys
+import types
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator
@@ -84,6 +86,49 @@ class _ChunkRow:
         self.section_path = section
         self.page_start = page
         self.page_end = page
+
+
+def test_gemini_non_stream_calls_include_timeout(monkeypatch) -> None:
+    calls = []
+
+    class _Resp:
+        text = "hello"
+        usage_metadata = None
+
+    class _Model:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def generate_content(self, *args, **kwargs):
+            calls.append(kwargs)
+            return _Resp()
+
+    class _DummyGemini(types.ModuleType):
+        class types:
+            class GenerationConfig:
+                def __init__(self, **kwargs):
+                    self.kwargs = kwargs
+
+        def configure(self, *args, **kwargs):
+            return None
+
+        GenerativeModel = _Model
+
+    monkeypatch.setitem(sys.modules, "google", types.ModuleType("google"))
+    google_mod = sys.modules["google"]
+    google_mod.generativeai = _DummyGemini("google.generativeai")
+    monkeypatch.setitem(sys.modules, "google.generativeai", google_mod.generativeai)
+
+    from app.ai import llm
+    from app.config import settings
+
+    client = llm.GeminiClient()
+    client._generate_sync(
+        system_prompt="system",
+        contents=[{"role": "user", "parts": [{"text": "hello"}]}],
+    )
+
+    assert calls[-1]["request_options"] == {"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS}
 
 
 @pytest.mark.asyncio

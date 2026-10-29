@@ -40,7 +40,7 @@ class Settings(BaseSettings):
 
     # ------------------------------------------------------- LLM (Gemini) --
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
 
     # ------------------------------------- Local embeddings / vector store --
     EMBEDDING_MODEL_NAME: str = "BAAI/bge-small-en-v1.5"
@@ -92,6 +92,7 @@ class Settings(BaseSettings):
     RAG_HISTORY_MAX_TURNS: int = 6
     RAG_ENABLE_RERANK: bool = True
     RAG_QUERY_EXPANSION: bool = True
+    RAG_QUERY_EXPANSION_TIMEOUT_SECONDS: int = 15
     RAG_QUERY_CACHE_TTL: int = 3600
     RAG_EVAL_ENABLED: bool = True
     RAG_EVAL_SAMPLE_LIMIT: int = 50

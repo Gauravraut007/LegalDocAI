@@ -57,3 +57,24 @@ def test_load_round_trip() -> None:
     assert idx.ntotal == 5
     assert meta.chunk_ids == ids
     store.delete_index(doc_id)
+
+
+def test_get_vectors_reconstructs_and_tracks_appended_ids(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "FAISS_INDEX_DIR", str(tmp_path))
+    store = FaissVectorStore()
+    doc_id = str(uuid.uuid4())
+    vectors = _vecs(2, settings.EMBEDDING_DIM)
+    ids = ["first", "second"]
+    store.add(doc_id, vectors, ids)
+
+    initial = store.get_vectors([(doc_id, "first"), (doc_id, "missing")])
+    expected = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+    assert set(initial) == {(doc_id, "first")}
+    np.testing.assert_allclose(initial[(doc_id, "first")], expected[0])
+
+    appended = _vecs(1, settings.EMBEDDING_DIM)
+    store.add(doc_id, appended, ["third"])
+    after_append = store.get_vectors([(doc_id, "third")])
+    expected_appended = appended[0] / np.linalg.norm(appended[0])
+    np.testing.assert_allclose(after_append[(doc_id, "third")], expected_appended)
+    store.delete_index(doc_id)

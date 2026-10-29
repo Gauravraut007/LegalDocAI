@@ -115,6 +115,10 @@ def _safety_settings():
         return None
 
 
+def _request_timeout_options() -> dict:
+    return {"timeout": settings.LLM_REQUEST_TIMEOUT_SECONDS}
+
+
 # =========================================================================
 # Public API
 # =========================================================================
@@ -176,7 +180,12 @@ class GeminiClient:
                 top_p=self.top_p,
                 max_output_tokens=max_output_tokens or self.max_output_tokens,
             )
-            resp = model.generate_content(contents, generation_config=cfg, stream=False)
+            resp = model.generate_content(
+                contents,
+                generation_config=cfg,
+                stream=False,
+                request_options=_request_timeout_options(),
+            )
             text = (resp.text or "") if hasattr(resp, "text") else ""
             usage = _extract_usage(resp)
             _BREAKER.record_success()
@@ -280,6 +289,7 @@ class GeminiClient:
                         contents,
                         generation_config=cfg,
                         stream=False,
+                        request_options=_request_timeout_options(),
                     )
                     txt = (resp.text or "") if hasattr(resp, "text") else ""
                     if txt:
